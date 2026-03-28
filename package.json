@@ -15,9 +15,9 @@
     "multi-provider"
   ],
   "license": "MIT",
-  "author": "Kamran Ahmed",
+  "author": "Linh Truong",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kamranahmedse/cc-statusline.git"
+    "url": "https://github.com/thlinhit/cc-statusline.git"
   }
 }
