@@ -1,6 +1,6 @@
 {
   "name": "@thlinh/cc-statusline",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Multi-provider status line for Claude Code CLI supporting Anthropic and Z.AI APIs",
   "bin": {
     "cc-statusline": "bin/install.js"
