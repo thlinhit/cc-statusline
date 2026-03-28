@@ -1,16 +1,23 @@
 {
-  "name": "@kamranahmedse/claude-statusline",
-  "version": "1.0.4",
-  "description": "A status line for Claude Code CLI showing model, context usage, rate limits, and more",
+  "name": "@thlinh/cc-statusline",
+  "version": "2.0.0",
+  "description": "Multi-provider status line for Claude Code CLI supporting Anthropic and Z.AI APIs",
   "bin": {
-    "claude-statusline": "./bin/install.js"
+    "cc-statusline": "./bin/install.js"
   },
   "keywords": [
     "claude",
     "claude-code",
     "statusline",
-    "cli"
+    "cli",
+    "anthropic",
+    "zai",
+    "multi-provider"
   ],
   "license": "MIT",
-  "author": "Kamran Ahmed"
+  "author": "Kamran Ahmed",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kamranahmedse/cc-statusline.git"
+  }
 }
