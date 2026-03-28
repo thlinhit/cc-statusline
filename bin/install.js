@@ -38,8 +38,12 @@ function parseArgs() {
       args.uninstall = true;
     } else if (arg.startsWith("--dir=")) {
       args.dir = arg.split("=")[1];
+    } else if (arg === "--dir" && i + 1 < process.argv.length) {
+      args.dir = process.argv[++i];
     } else if (arg.startsWith("--provider=")) {
       args.provider = arg.split("=")[1];
+    } else if (arg === "--provider" && i + 1 < process.argv.length) {
+      args.provider = process.argv[++i];
     }
   }
   return args;
