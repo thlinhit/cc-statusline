@@ -1,40 +1,26 @@
 # cc-statusline
 
-Multi-provider status line for Claude Code CLI supporting Anthropic and Z.AI APIs.
+Status line for Claude Code CLI. Works with Anthropic or Z.AI.
 
 ![demo](./.github/demo.png)
 
-## Features
-
-- **Multi-provider support**: Anthropic and Z.AI APIs
-- **Usage tracking**: Current, weekly, and extra usage (varies by provider)
-- **Context display**: Model name, context percentage, directory, git branch
-- **Session info**: Duration, effort level indicator
-- **Cross-platform**: Works on macOS and Linux
+Shows your current model, context percentage, git branch, how long you've been working, and API usage depending on your provider.
 
 ## Install
-
-### Anthropic (default directory)
 
 ```bash
 npx @thlinh/cc-statusline
 ```
 
-Or with explicit provider:
+This uses Anthropic by default and installs to `~/.claude`.
+
+For Z.AI:
 
 ```bash
-npx @thlinh/cc-statusline --provider=anthropic
+npx @thlinh/cc-statusline --provider=zai --dir ~/.claude-z
 ```
 
-### Z.AI (custom directory)
-
-```bash
-npx @thlinh/cc-statusline --dir ~/.claude-z --provider=zai
-```
-
-### Non-interactive install
-
-For dotfiles or automated scripts:
+For scripts or dotfiles (skip the prompts):
 
 ```bash
 npx @thlinh/cc-statusline --provider=zai --dir ~/.claude-z
@@ -42,29 +28,17 @@ npx @thlinh/cc-statusline --provider=zai --dir ~/.claude-z
 
 ## Requirements
 
-- [jq](https://jqlang.github.io/jq/) — for parsing JSON
-- curl — for fetching rate limit data
-- git — for branch info (optional)
+- [jq](https://jqlang.github.io/jq/) — parses JSON
+- curl — fetches usage
+- git — branch info (optional)
 
-On macOS:
-
-```bash
-brew install jq
-```
+macOS: `brew install jq`
 
 ## Providers
 
-### Anthropic
+**Anthropic** — pulls OAuth token from keychain, calls Anthropic's usage API, shows current/weekly/extra.
 
-- **Token source**: OAuth token from keychain or environment
-- **API endpoint**: `https://api.anthropic.com/api/oauth/usage`
-- **Display**: current (5-hour), weekly (7-day), extra (monthly credits)
-
-### Z.AI
-
-- **Token source**: `~/.chelper/config.yaml`
-- **API endpoint**: `https://api.z.ai/api/monitor/usage/quota/limit`
-- **Display**: current (tokens), tools (MCP usage)
+**Z.AI** — reads token from `~/.chelper/config.yaml`, calls Z.AI's quota API, shows token and tool usage.
 
 ## Uninstall
 
@@ -72,15 +46,15 @@ brew install jq
 npx @thlinh/cc-statusline --uninstall --dir ~/.claude-z
 ```
 
-If you had a previous statusline, it restores it from the backup. Otherwise it removes the script and cleans up your settings.
+Restores your backup if you had one, otherwise removes the files.
 
-## Architecture
+## What gets installed
 
-The installed statusline consists of three modular files:
+Three files end up in your claude config directory:
 
-- `statusline.sh` — Main entry point (generated at install time)
-- `statusline-helpers.sh` — Shared utilities
-- `statusline-provider.sh` — Provider-specific implementation
+- `statusline.sh` — main script (generated when you run the installer)
+- `statusline-helpers.sh` — shared utilities
+- `statusline-provider.sh` — whichever provider you picked
 
 ## License
 
