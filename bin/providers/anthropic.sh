@@ -2,6 +2,23 @@
 # Anthropic provider for cc-statusline
 # Implements: get_provider_token, fetch_usage_data, format_usage_lines
 
+# ── Derive keychain service name from data directory ──────
+# Default ~/.claude uses "Claude Code-credentials"
+# Non-default dirs use "Claude Code-credentials-{sha256(path)[:8]}"
+_keychain_service_name() {
+    local default_dir="${HOME}/.claude"
+    if [ "$SCRIPT_DIR" = "$default_dir" ]; then
+        echo "Claude Code-credentials"
+    else
+        local hash
+        hash=$(printf '%s' "$SCRIPT_DIR" | shasum -a 256 2>/dev/null | cut -c1-8)
+        if [ -z "$hash" ]; then
+            hash=$(printf '%s' "$SCRIPT_DIR" | sha256sum 2>/dev/null | cut -c1-8)
+        fi
+        echo "Claude Code-credentials-${hash}"
+    fi
+}
+
 # ── Get Anthropic OAuth token ─────────────────────────────
 get_provider_token() {
     local token=""
@@ -12,10 +29,13 @@ get_provider_token() {
         return 0
     fi
 
+    local service_name
+    service_name=$(_keychain_service_name)
+
     # Check macOS keychain
     if command -v security >/dev/null 2>&1; then
         local blob
-        blob=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null)
+        blob=$(security find-generic-password -s "$service_name" -w 2>/dev/null)
         if [ -n "$blob" ]; then
             token=$(echo "$blob" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
             if [ -n "$token" ] && [ "$token" != "null" ]; then
@@ -25,8 +45,8 @@ get_provider_token() {
         fi
     fi
 
-    # Check credentials file
-    local creds_file="${HOME}/.claude/.credentials.json"
+    # Check credentials file in the script's own directory
+    local creds_file="${SCRIPT_DIR}/.credentials.json"
     if [ -f "$creds_file" ]; then
         token=$(jq -r '.claudeAiOauth.accessToken // empty' "$creds_file" 2>/dev/null)
         if [ -n "$token" ] && [ "$token" != "null" ]; then
@@ -38,7 +58,7 @@ get_provider_token() {
     # Check Linux secret-tool
     if command -v secret-tool >/dev/null 2>&1; then
         local blob
-        blob=$(timeout 2 secret-tool lookup service "Claude Code-credentials" 2>/dev/null)
+        blob=$(timeout 2 secret-tool lookup service "$service_name" 2>/dev/null)
         if [ -n "$blob" ]; then
             token=$(echo "$blob" | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
             if [ -n "$token" ] && [ "$token" != "null" ]; then
