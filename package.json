@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "description": "Multi-provider status line for Claude Code CLI supporting Anthropic and Z.AI APIs",
   "bin": {
-    "cc-statusline": "./bin/install.js"
+    "cc-statusline": "bin/install.js"
   },
   "keywords": [
     "claude",
