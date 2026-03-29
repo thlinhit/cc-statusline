@@ -55,8 +55,6 @@ fetch_usage_data() {
 }
 
 # ── Format Z.AI usage lines ────────────────────────────────────
-# Updated for new API response structure (2025-03)
-# API now returns limits as array: .data.limits[]
 format_usage_lines() {
     local usage_data="$1"
     [ -z "$usage_data" ] && return
@@ -64,7 +62,6 @@ format_usage_lines() {
     local bar_width=10
     local rate_lines=""
 
-    # Batch jq call: extract TOKENS_LIMIT and TIME_LIMIT in one pass
     local tokens_pct tokens_reset_ms time_used time_limit
     IFS='|' read -r tokens_pct tokens_reset_ms time_used time_limit < <(
         echo "$usage_data" | jq -r '
@@ -79,7 +76,6 @@ format_usage_lines() {
         '
     )
 
-    # Convert milliseconds to formatted time using shared helper
     local tokens_reset=""
     [ -n "$tokens_reset_ms" ] && tokens_reset=$(_format_epoch_time "$(( tokens_reset_ms / 1000 ))" "time")
 
