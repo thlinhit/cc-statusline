@@ -65,14 +65,12 @@ format_usage_lines() {
     local rate_lines=""
 
     # TOKENS_LIMIT (current) - first TOKENS_LIMIT in limits array
-    # New structure: .data.limits[] where type == "TOKENS_LIMIT"
     local tokens_pct tokens_reset_iso tokens_reset tokens_bar tokens_pct_color tokens_pct_fmt
     tokens_pct=$(echo "$usage_data" | jq -r '(.data.limits[] | select(.type == "TOKENS_LIMIT") | .percentage // 0)' | head -1)
     tokens_reset_iso=$(echo "$usage_data" | jq -r '(.data.limits[] | select(.type == "TOKENS_LIMIT") | .nextResetTime // empty)' | head -1)
 
-    # Convert milliseconds to seconds for date formatting if needed
+    # Convert milliseconds to seconds for date formatting
     if [ -n "$tokens_reset_iso" ] && [ "$tokens_reset_iso" != "null" ]; then
-        # nextResetTime is in milliseconds, convert to seconds for formatting
         tokens_reset_iso=$(( tokens_reset_iso / 1000 ))
         tokens_reset=$(date -j -r "$tokens_reset_iso" +"%l:%M%p" 2>/dev/null | sed 's/^ //; s/\.//g' | tr '[:upper:]' '[:lower:]')
         [ -z "$tokens_reset" ] && tokens_reset=$(date -d "@$tokens_reset_iso" +"%l:%M%P" 2>/dev/null | sed 's/^ //; s/\.//g')
@@ -85,7 +83,6 @@ format_usage_lines() {
     rate_lines="${white}current${reset} ${tokens_bar} ${tokens_pct_color}${tokens_pct_fmt}%${reset} ${dim}⟳${reset} ${white}${tokens_reset}${reset}"
 
     # TIME_LIMIT (tools/MCP) - find TIME_LIMIT in limits array
-    # New structure: .data.limits[] where type == "TIME_LIMIT"
     local time_used time_limit time_pct time_bar time_pct_color time_pct_fmt time_seconds
     time_used=$(echo "$usage_data" | jq -r '(.data.limits[] | select(.type == "TIME_LIMIT") | .currentValue // 0)')
     time_limit=$(echo "$usage_data" | jq -r '(.data.limits[] | select(.type == "TIME_LIMIT") | .usage // 1)')
@@ -109,8 +106,7 @@ format_usage_lines() {
         time_seconds="${time_used}s"
     fi
 
-    rate_lines="${rate_lines}
-${white}tools${reset}   ${time_bar} ${time_pct_color}${time_pct_fmt}%${reset} ${dim}(${reset}${white}${time_seconds}${reset}${dim})${reset}"
+    rate_lines+="\n${white}tools${reset}   ${time_bar} ${time_pct_color}${time_pct_fmt}%${reset} ${dim}(${reset}${white}${time_seconds}${reset}${dim})${reset}"
 
     printf "%b" "$rate_lines"
 }

@@ -88,14 +88,10 @@ iso_to_epoch() {
     return 1
 }
 
-# ── Format reset times ───────────────────────────────────
-format_reset_time() {
-    local iso_str="$1"
+# ── Format epoch timestamp (internal helper) ─────────────
+_format_epoch_time() {
+    local epoch="$1"
     local style="$2"
-    [ -z "$iso_str" ] || [ "$iso_str" = "null" ] && return
-
-    local epoch
-    epoch=$(iso_to_epoch "$iso_str")
     [ -z "$epoch" ] && return
 
     local result=""
@@ -114,4 +110,17 @@ format_reset_time() {
             ;;
     esac
     printf "%s" "$result"
+}
+
+# ── Format reset times ───────────────────────────────────
+format_reset_time() {
+    local iso_str="$1"
+    local style="$2"
+    [ -z "$iso_str" ] || [ "$iso_str" = "null" ] && return
+
+    local epoch
+    epoch=$(iso_to_epoch "$iso_str")
+    [ -z "$epoch" ] && return
+
+    _format_epoch_time "$epoch" "$style"
 }

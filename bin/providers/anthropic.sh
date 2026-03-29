@@ -101,22 +101,29 @@ format_usage_lines() {
     local bar_width=10
     local rate_lines=""
 
-    # Five hour (current) usage
-    local five_hour_pct five_hour_reset_iso five_hour_reset five_hour_bar five_hour_pct_color five_hour_pct_fmt
-    five_hour_pct=$(echo "$usage_data" | jq -r '.five_hour.utilization // 0' | awk '{printf "%.0f", $1}')
-    five_hour_reset_iso=$(echo "$usage_data" | jq -r '.five_hour.resets_at // empty')
-    five_hour_reset=$(format_reset_time "$five_hour_reset_iso" "time")
+    # Batch jq call 1: extract all base usage fields
+    local five_hour_util five_hour_resets seven_day_util seven_day_resets extra_enabled
+    IFS='|' read -r five_hour_util five_hour_resets seven_day_util seven_day_resets extra_enabled < <(
+        echo "$usage_data" | jq -r '[
+            .five_hour.utilization // 0,
+            (.five_hour.resets_at // ""),
+            .seven_day.utilization // 0,
+            (.seven_day.resets_at // ""),
+            (.extra_usage.is_enabled // false | tostring)
+        ] | join("|")'
+    )
+    local five_hour_pct five_hour_reset five_hour_bar five_hour_pct_color five_hour_pct_fmt
+    five_hour_pct=$(awk "BEGIN {printf \"%.0f\", $five_hour_util}")
+    five_hour_reset=$(format_reset_time "$five_hour_resets" "time")
     five_hour_bar=$(build_bar "$five_hour_pct" "$bar_width")
     five_hour_pct_color=$(color_for_pct "$five_hour_pct")
     five_hour_pct_fmt=$(printf "%3d" "$five_hour_pct")
 
     rate_lines+="${white}current${reset} ${five_hour_bar} ${five_hour_pct_color}${five_hour_pct_fmt}%${reset} ${dim}⟳${reset} ${white}${five_hour_reset}${reset}"
 
-    # Seven day (weekly) usage
-    local seven_day_pct seven_day_reset_iso seven_day_reset seven_day_bar seven_day_pct_color seven_day_pct_fmt
-    seven_day_pct=$(echo "$usage_data" | jq -r '.seven_day.utilization // 0' | awk '{printf "%.0f", $1}')
-    seven_day_reset_iso=$(echo "$usage_data" | jq -r '.seven_day.resets_at // empty')
-    seven_day_reset=$(format_reset_time "$seven_day_reset_iso" "datetime")
+    local seven_day_pct seven_day_reset seven_day_bar seven_day_pct_color seven_day_pct_fmt
+    seven_day_pct=$(awk "BEGIN {printf \"%.0f\", $seven_day_util}")
+    seven_day_reset=$(format_reset_time "$seven_day_resets" "datetime")
     seven_day_bar=$(build_bar "$seven_day_pct" "$bar_width")
     seven_day_pct_color=$(color_for_pct "$seven_day_pct")
     seven_day_pct_fmt=$(printf "%3d" "$seven_day_pct")
@@ -124,12 +131,19 @@ format_usage_lines() {
     rate_lines+="\n${white}weekly${reset}  ${seven_day_bar} ${seven_day_pct_color}${seven_day_pct_fmt}%${reset} ${dim}⟳${reset} ${white}${seven_day_reset}${reset}"
 
     # Extra usage (monthly credits) - if enabled
-    local extra_enabled extra_pct extra_used extra_limit extra_bar extra_pct_color extra_reset extra_col
-    extra_enabled=$(echo "$usage_data" | jq -r '.extra_usage.is_enabled // false')
+    local extra_pct extra_used extra_limit extra_bar extra_pct_color extra_reset extra_col
     if [ "$extra_enabled" = "true" ]; then
-        extra_pct=$(echo "$usage_data" | jq -r '.extra_usage.utilization // 0' | awk '{printf "%.0f", $1}')
-        extra_used=$(echo "$usage_data" | jq -r '.extra_usage.used_credits // 0' | awk '{printf "%.2f", $1/100}')
-        extra_limit=$(echo "$usage_data" | jq -r '.extra_usage.monthly_limit // 0' | awk '{printf "%.2f", $1/100}')
+        local extra_util extra_used_raw extra_limit_raw
+        IFS='|' read -r extra_util extra_used_raw extra_limit_raw < <(
+            echo "$usage_data" | jq -r '[
+                .extra_usage.utilization // 0,
+                .extra_usage.used_credits // 0,
+                .extra_usage.monthly_limit // 0
+            ] | join("|")'
+        )
+        extra_pct=$(awk "BEGIN {printf \"%.0f\", $extra_util}")
+        extra_used=$(awk "BEGIN {printf \"%.2f\", $extra_used_raw/100}")
+        extra_limit=$(awk "BEGIN {printf \"%.2f\", $extra_limit_raw/100}")
         extra_bar=$(build_bar "$extra_pct" "$bar_width")
         extra_pct_color=$(color_for_pct "$extra_pct")
 
