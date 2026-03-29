@@ -2,25 +2,39 @@
 # Z.AI provider for cc-statusline
 # Implements: get_provider_token, fetch_usage_data, format_usage_lines
 
-# ── Get Z.AI API token from config.yaml ───────────────────
+# ── Get Z.AI API token ─────────────────────────────────────────
+# Priority: 1) settings.json in script dir  2) ~/.chelper/config.yaml
 get_provider_token() {
+    # Method 1: Check settings.json in script directory (for Z.AI Claude Code)
+    if [ -n "${SCRIPT_DIR}" ]; then
+        local settings_file="${SCRIPT_DIR}/settings.json"
+        if [ -f "$settings_file" ]; then
+            local token
+            token=$(jq -r '.env.ANTHROPIC_AUTH_TOKEN // empty' "$settings_file" 2>/dev/null)
+            if [ -n "$token" ] && [ "$token" != "null" ]; then
+                echo "$token"
+                return 0
+            fi
+        fi
+    fi
+
+    # Method 2: Check ~/.chelper/config.yaml (legacy/fallback)
     local config_file="${HOME}/.chelper/config.yaml"
-    [ ! -f "$config_file" ] && echo "" && return 1
+    if [ -f "$config_file" ]; then
+        local token
+        token=$(grep "^api_key:" "$config_file" | sed 's/^api_key:[[:space:]]*//' | tr -d '[:space:]"')
 
-    # Extract api_key using basic string parsing (no yaml parser dependency)
-    local token
-    token=$(grep "^api_key:" "$config_file" | sed 's/^api_key:[[:space:]]*//' | tr -d '[:space:]"'"'')
-
-    if [ -n "$token" ]; then
-        echo "$token"
-        return 0
+        if [ -n "$token" ]; then
+            echo "$token"
+            return 0
+        fi
     fi
 
     echo ""
     return 1
 }
 
-# ── Fetch Z.AI usage data ──────────────────────────────────
+# ── Fetch Z.AI usage data ──────────────────────────────────────
 fetch_usage_data() {
     local token="$1"
     [ -z "$token" ] && return 1
@@ -40,7 +54,7 @@ fetch_usage_data() {
     return 1
 }
 
-# ── Format Z.AI usage lines ────────────────────────────────
+# ── Format Z.AI usage lines ────────────────────────────────────
 format_usage_lines() {
     local usage_data="$1"
     [ -z "$usage_data" ] && return
@@ -66,9 +80,9 @@ format_usage_lines() {
     tokens_pct_fmt=$(printf "%3d" "$tokens_pct")
     tokens_display=$(format_tokens "$tokens_used")
 
-    rate_lines+="${white}current${reset} ${tokens_bar} ${tokens_pct_color}${tokens_pct_fmt}%${reset} ${dim}(${reset}${white}${tokens_display}${reset}${dim})${reset} ${dim}⟳${reset} ${white}${tokens_reset}${reset}"
+    rate_lines="${white}current${reset} ${tokens_bar} ${tokens_pct_color}${tokens_pct_fmt}%${reset} ${dim}(${reset}${white}${tokens_display}${reset}${dim})${reset} ${dim}reset${reset} ${white}${tokens_reset}${reset}"
 
-    # TIME_LIMIT (tools/MCP) - no reset time shown
+    # TIME_LIMIT (tools/MCP)
     local time_used time_limit time_pct time_bar time_pct_color time_pct_fmt time_seconds
     time_used=$(echo "$usage_data" | jq -r '.data.TIME_LIMIT.used // 0')
     time_limit=$(echo "$usage_data" | jq -r '.data.TIME_LIMIT.limit // 1')
@@ -92,7 +106,8 @@ format_usage_lines() {
         time_seconds="${time_used}s"
     fi
 
-    rate_lines+="\n${white}tools${reset}   ${time_bar} ${time_pct_color}${time_pct_fmt}%${reset} ${dim}(${reset}${white}${time_seconds}${reset}${dim})${reset}"
+    rate_lines="${rate_lines}
+${white}tools${reset}   ${time_bar} ${time_pct_color}${time_pct_fmt}%${reset} ${dim}(${reset}${white}${time_seconds}${reset}${dim})${reset}"
 
     printf "%b" "$rate_lines"
 }
