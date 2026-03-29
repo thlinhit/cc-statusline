@@ -64,28 +64,33 @@ format_usage_lines() {
     local bar_width=10
     local rate_lines=""
 
-    # TOKENS_LIMIT (current) - first TOKENS_LIMIT in limits array
-    local tokens_pct tokens_reset_iso tokens_reset tokens_bar tokens_pct_color tokens_pct_fmt
-    tokens_pct=$(echo "$usage_data" | jq -r '(.data.limits[] | select(.type == "TOKENS_LIMIT") | .percentage // 0)' | head -1)
-    tokens_reset_iso=$(echo "$usage_data" | jq -r '(.data.limits[] | select(.type == "TOKENS_LIMIT") | .nextResetTime // empty)' | head -1)
+    # Batch jq call: extract TOKENS_LIMIT and TIME_LIMIT in one pass
+    local tokens_pct tokens_reset_ms time_used time_limit
+    IFS='|' read -r tokens_pct tokens_reset_ms time_used time_limit < <(
+        echo "$usage_data" | jq -r '
+            reduce .data.limits[] as $l (
+                {p: 0, r: null, u: null, lim: null};
+                if ($l.type == "TOKENS_LIMIT" and .r == null) then
+                    .p = ($l.percentage // 0) | .r = ($l.nextResetTime // "")
+                elif ($l.type == "TIME_LIMIT" and .u == null) then
+                    .u = ($l.currentValue // 0) | .lim = ($l.usage // 1)
+                else . end
+            ) | [.p, (.r // ""), (.u // 0), (.lim // 1)] | join("|")
+        '
+    )
 
-    # Convert milliseconds to seconds for date formatting
-    if [ -n "$tokens_reset_iso" ] && [ "$tokens_reset_iso" != "null" ]; then
-        tokens_reset_iso=$(( tokens_reset_iso / 1000 ))
-        tokens_reset=$(date -j -r "$tokens_reset_iso" +"%l:%M%p" 2>/dev/null | sed 's/^ //; s/\.//g' | tr '[:upper:]' '[:lower:]')
-        [ -z "$tokens_reset" ] && tokens_reset=$(date -d "@$tokens_reset_iso" +"%l:%M%P" 2>/dev/null | sed 's/^ //; s/\.//g')
-    fi
+    # Convert milliseconds to formatted time using shared helper
+    local tokens_reset=""
+    [ -n "$tokens_reset_ms" ] && tokens_reset=$(_format_epoch_time "$(( tokens_reset_ms / 1000 ))" "time")
 
+    local tokens_bar tokens_pct_color tokens_pct_fmt
     tokens_bar=$(build_bar "$tokens_pct" "$bar_width")
     tokens_pct_color=$(color_for_pct "$tokens_pct")
     tokens_pct_fmt=$(printf "%3d" "$tokens_pct")
 
     rate_lines="${white}current${reset} ${tokens_bar} ${tokens_pct_color}${tokens_pct_fmt}%${reset} ${dim}⟳${reset} ${white}${tokens_reset}${reset}"
 
-    # TIME_LIMIT (tools/MCP) - find TIME_LIMIT in limits array
-    local time_used time_limit time_pct time_bar time_pct_color time_pct_fmt time_seconds
-    time_used=$(echo "$usage_data" | jq -r '(.data.limits[] | select(.type == "TIME_LIMIT") | .currentValue // 0)')
-    time_limit=$(echo "$usage_data" | jq -r '(.data.limits[] | select(.type == "TIME_LIMIT") | .usage // 1)')
+    local time_pct time_bar time_pct_color time_pct_fmt time_seconds
 
     if [ "$time_limit" -gt 0 ]; then
         time_pct=$(( time_used * 100 / time_limit ))
