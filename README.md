@@ -14,6 +14,12 @@ npx @thlinh/cc-statusline
 
 This uses Anthropic by default and installs to `~/.claude`.
 
+For Anthropic Enterprise spent-limit display:
+
+```bash
+npx @thlinh/cc-statusline --provider=anthropic --usage-display=spent
+```
+
 For Z.AI:
 
 ```bash
@@ -36,7 +42,7 @@ macOS: `brew install jq`
 
 ## Providers
 
-**Anthropic** — pulls OAuth token from keychain, calls Anthropic's usage API, shows current/weekly/extra.
+**Anthropic** — pulls OAuth token from keychain, calls Anthropic's usage API, shows current/weekly/extra by default. Use `--usage-display=spent` for Enterprise spent-limit accounts.
 
 **Z.AI** — reads token from `~/.chelper/config.yaml`, calls Z.AI's quota API, shows token and tool usage.
 

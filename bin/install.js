@@ -44,6 +44,10 @@ function parseArgs() {
       args.provider = arg.split("=")[1];
     } else if (arg === "--provider" && i + 1 < process.argv.length) {
       args.provider = process.argv[++i];
+    } else if (arg.startsWith("--usage-display=")) {
+      args.usageDisplay = arg.split("=")[1];
+    } else if (arg === "--usage-display" && i + 1 < process.argv.length) {
+      args.usageDisplay = process.argv[++i];
     }
   }
   return args;
@@ -115,6 +119,68 @@ async function getProvider(args) {
     return "anthropic";
   }
   return await promptProvider();
+}
+
+function normalizeUsageDisplay(value) {
+  const usageDisplay = String(value || "").toLowerCase();
+  if (usageDisplay === "spent" || usageDisplay === "spend") {
+    return "spent";
+  }
+  if (
+    usageDisplay === "limits" ||
+    usageDisplay === "limit" ||
+    usageDisplay === "current" ||
+    usageDisplay === "default"
+  ) {
+    return "limits";
+  }
+  return "";
+}
+
+function promptUsageDisplay() {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    rl.question(
+      `\n  ${blue}Which Anthropic usage display?${reset}\n    ${dim}1) Current/weekly limits${reset}\n    ${dim}2) Spent limit (Enterprise)${reset}\n  ${blue}>${reset} `,
+      (answer) => {
+        rl.close();
+        const choice = answer.trim().toLowerCase();
+        if (choice === "2" || choice.startsWith("s")) {
+          resolve("spent");
+        } else {
+          resolve("limits");
+        }
+      }
+    );
+  });
+}
+
+async function getUsageDisplay(args, provider) {
+  if (provider !== "anthropic") {
+    if (args.usageDisplay) {
+      warn("--usage-display is only supported for Anthropic; ignoring it");
+    }
+    return "limits";
+  }
+
+  if (args.usageDisplay) {
+    const usageDisplay = normalizeUsageDisplay(args.usageDisplay);
+    if (usageDisplay) {
+      return usageDisplay;
+    }
+    warn(`Unknown usage display "${args.usageDisplay}", defaulting to limits`);
+    return "limits";
+  }
+
+  if (args.provider) {
+    return "limits";
+  }
+
+  return await promptUsageDisplay();
 }
 
 // Uninstall function
@@ -204,7 +270,7 @@ function uninstall(targetDir) {
 }
 
 // Generate statusline.sh content
-function generateStatuslineScript(provider) {
+function generateStatuslineScript(provider, usageDisplay = "limits") {
   const providerName = provider === "anthropic" ? "Anthropic" : "Z.AI";
 
   return `#!/bin/bash
@@ -229,6 +295,8 @@ SCRIPT_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
 
 # Source provider implementation
 . "\${SCRIPT_DIR}/statusline-provider.sh"
+
+export CC_STATUSLINE_USAGE_DISPLAY="${usageDisplay}"
 
 # ── Extract JSON data ───────────────────────────────────
 model_name=$(echo "$input" | jq -r '.model.display_name // "Claude"')
@@ -394,6 +462,7 @@ async function run() {
 
   // Get provider
   const provider = await getProvider(args);
+  const usageDisplay = await getUsageDisplay(args, provider);
   const providerName = provider === "anthropic" ? "Anthropic" : "Z.AI";
   success(`Installing for ${providerName}`);
 
@@ -443,7 +512,7 @@ async function run() {
   );
 
   // Generate and write statusline.sh
-  const statuslineContent = generateStatuslineScript(provider);
+  const statuslineContent = generateStatuslineScript(provider, usageDisplay);
   fs.writeFileSync(STATUSLINE_DEST, statuslineContent);
   fs.chmodSync(STATUSLINE_DEST, 0o755);
   success(`Installed statusline to ${dim}${STATUSLINE_DEST}${reset}`);
@@ -485,6 +554,9 @@ async function run() {
   );
   console.log();
   log(`${dim}Provider: ${providerName}${reset}`);
+  if (provider === "anthropic") {
+    log(`${dim}Usage display: ${usageDisplay}${reset}`);
+  }
   console.log();
 }
 

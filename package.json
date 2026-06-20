@@ -5,6 +5,9 @@
   "bin": {
     "cc-statusline": "bin/install.js"
   },
+  "scripts": {
+    "test": "bash test/anthropic-format.test.sh && bash test/installer-options.test.sh"
+  },
   "keywords": [
     "claude",
     "claude-code",
