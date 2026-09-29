@@ -318,11 +318,9 @@ else
     pct_used=0
 fi
 
-effort="default"
-settings_path="\${SCRIPT_DIR}/settings.json"
-if [ -f "$settings_path" ]; then
-    effort=$(jq -r '.effortLevel // "default"' "$settings_path" 2>/dev/null)
-fi
+# Live session value (reflects mid-session /effort changes); absent if model lacks effort support
+effort=$(echo "$input" | jq -r '.effort.level // empty')
+[ -z "$effort" ] && effort="n/a"
 
 # ── LINE 1: Model │ Context % │ Directory (branch) │ Session │ Effort ──
 sep=" \${dim}│\${reset} "
@@ -371,7 +369,7 @@ if [ -n "$session_duration" ]; then
 fi
 line1+="\${sep}"
 case "$effort" in
-    high)   line1+="\${magenta}● \${effort}\${reset}" ;;
+    max|xhigh|high) line1+="\${magenta}● \${effort}\${reset}" ;;
     medium) line1+="\${dim}◑ \${effort}\${reset}" ;;
     low)    line1+="\${dim}◔ \${effort}\${reset}" ;;
     *)      line1+="\${dim}◑ \${effort}\${reset}" ;;
